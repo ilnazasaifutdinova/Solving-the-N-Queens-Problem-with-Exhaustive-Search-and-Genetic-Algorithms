@@ -1,36 +1,55 @@
+import java.time.Duration;
+import java.time.Instant;
+import java.util.Scanner;
+
 public class Exhaustive_Search {
     private final int size;
     private int[] positions;
     private int solutionCount = 0;
+    private final boolean verbose;
 
-    public Exhaustive_Search(int size) {
+    public Exhaustive_Search(int size, boolean verbose) {
         this.size = size;
         this.positions = new int[size];
+        this.verbose = verbose;
     }
 
     public static void main(String[] args) {
-        int n = 4; // default size
-        if (args.length > 0) {
-            try {
-                n = Integer.parseInt(args[0]);
-                if (n < 1) {
-                    System.out.println("Board size must be at least 1. Using default size 8.");
-                    n = 8;
-                }
-            } catch (NumberFormatException e) {
-                System.out.println("Invalid size argument. Using default size 8.");
+        Scanner scanner = new Scanner(System.in);
+        System.out.print("Enter the number of queens (N) for exhaustive search: ");
+        int n;
+        try {
+            n = scanner.nextInt();
+            if (n < 1) {
+                System.out.println("Board size must be at least 1. Using default size 8.");
+                n = 8;
             }
+        } catch (Exception e) {
+            System.out.println("Invalid input. Using default size 8.");
+            n = 8;
         }
+        System.out.print("Print solutions? (y/n): ");
+        boolean verbose = scanner.next().trim().equalsIgnoreCase("y");
+        scanner.close();
 
-        Exhaustive_Search solver = new Exhaustive_Search(n);
+        Exhaustive_Search solver = new Exhaustive_Search(n, verbose);
+
+        // Start timer
+        Instant start = Instant.now();
         solver.solve(0);
+        Instant end = Instant.now();
+
+        // End timer and print elapsed time
+        System.out.println("Elapsed time: " + Duration.between(start, end).toMillis() + " ms");
         System.out.println("Total solutions for " + n + " queens: " + solver.solutionCount);
     }
 
-    // Recursive backtracking: place a queen in row 'row'
+    //Recursive backtracking: place a queen in row 'row'
     private void solve(int row) {
         if (row == size) {
-            printSolution();
+            if (verbose) {
+                printSolution();
+            }
             solutionCount++;
             return;
         }
@@ -42,16 +61,11 @@ public class Exhaustive_Search {
         }
     }
 
-    // Check if placing a queen at (row, col) is safe
+    //Check if placing a queen at (row, col) is safe
     private boolean isSafe(int row, int col) {
         for (int prevRow = 0; prevRow < row; prevRow++) {
             int prevCol = positions[prevRow];
-            // Same column
-            if (prevCol == col) {
-                return false;
-            }
-            // Diagonals
-            if (Math.abs(prevCol - col) == Math.abs(prevRow - row)) {
+            if (prevCol == col || Math.abs(prevCol - col) == Math.abs(prevRow - row)) {
                 return false;
             }
         }
@@ -70,4 +84,3 @@ public class Exhaustive_Search {
         System.out.println();
     }
 }
-
