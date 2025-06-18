@@ -1,6 +1,6 @@
-// File: Hill_Climbing.java
 import java.time.Duration;
 import java.time.Instant;
+import java.util.InputMismatchException;
 import java.util.Locale;
 import java.util.Random;
 import java.util.Scanner;
@@ -20,42 +20,80 @@ public class Hill_Climbing {
     public static void main(String[] args) {
         Scanner scanner = new Scanner(System.in);
         System.out.print("Enter the number of queens (N) for hill climbing search: ");
-        int n;
-        try {
-            n = scanner.nextInt();
-            if (n < 1) {
-                System.out.println("Board size must be at least 1. Using default size 8.");
-                n = 8;
-            }
-        } catch (Exception e) {
-            System.out.println("Invalid input. Using default size 8.");
-            n = 8;
-        }
+        int n = readPositiveInt(scanner, 8);
         System.out.print("Print solutions? (y/n): ");
         boolean verbose = scanner.next().trim().equalsIgnoreCase("y");
+        System.out.print("Use random restarts? (y/n): ");
+        boolean useRestarts = scanner.next().trim().equalsIgnoreCase("y");
+        int maxAttempts = 1;
+        if (useRestarts) {
+            System.out.print("Enter number of restarts: ");
+            maxAttempts = readPositiveInt(scanner, 100);
+        }
         scanner.close();
 
-        Hill_Climbing solver = new Hill_Climbing(n, verbose);
-        Instant start = Instant.now();
-        boolean solved = solver.solve();
-        Instant end = Instant.now();
+        Hill_Climbing solver;
+        int attempt = 0;
+        int bestConflicts = Integer.MAX_VALUE;
+        int[] bestPositions = null;
 
-        long millis = Duration.between(start, end).toMillis();
+        Runtime rt = Runtime.getRuntime();
+        rt.gc();
+        long beforeUsedMem = rt.totalMemory() - rt.freeMemory();
+
+        Instant startAll = Instant.now();
+        while (attempt < maxAttempts) {
+            attempt++;
+            solver = new Hill_Climbing(n, verbose);
+            solver.initRandom();
+            boolean solved = solver.solve();
+            int conflicts = solver.totalConflicts();
+            if (conflicts < bestConflicts) {
+                bestConflicts = conflicts;
+                bestPositions = solver.positions.clone();
+            }
+            if (verbose) {
+                System.out.println("Attempt " + attempt + ": conflicts = " + conflicts);
+            }
+            if (solved) break;
+        }
+        Instant endAll = Instant.now();
+
+        rt.gc();
+        long afterUsedMem = rt.totalMemory() - rt.freeMemory();
+        long usedMemBytes = afterUsedMem - beforeUsedMem;
+        if (usedMemBytes < 0) usedMemBytes = 0;
+
+        long millis = Duration.between(startAll, endAll).toMillis();
 
         System.out.println();
         System.out.println("Elapsed time: " + millis + " ms");
-
-        if (solved) {
-            System.out.println("Solution found:");
-            if (verbose) solver.printBoard();
+        System.out.println("Attempts: " + attempt);
+        if (bestConflicts == 0) {
+            System.out.println("Conflict-free solution found.");
         } else {
-            System.out.println("Local optimum reached, conflicts: " + solver.totalConflicts());
-            if (verbose) solver.printBoard();
+            System.out.println("No conflict-free solution found after " + attempt + " attempts.");
+            System.out.println("Best conflicts count: " + bestConflicts);
+        }
+        System.out.printf(Locale.US,
+                "Approximate memory used: %.2f MB%n", usedMemBytes / (1024.0 * 1024.0));
+        if (verbose && bestPositions != null) {
+            System.out.println("Best board found:");
+            printBoard(bestPositions);
+        }
+    }
+
+    private static int readPositiveInt(Scanner scanner, int defaultVal) {
+        try {
+            int val = scanner.nextInt();
+            if (val < 1) throw new NumberFormatException();
+            return val;
+        } catch (Exception e) {
+            return defaultVal;
         }
     }
 
     public boolean solve() {
-        initRandom();
         int currentConflicts = totalConflicts();
         while (currentConflicts > 0) {
             int bestRow = -1, bestCol = -1;
@@ -75,25 +113,24 @@ public class Hill_Climbing {
                 }
                 positions[row] = oldCol;
             }
-            if (bestDelta <= 0) break; // No improving move
+            if (bestDelta <= 0) break;
             positions[bestRow] = bestCol;
             currentConflicts -= bestDelta;
         }
-        return currentConflicts == 0;
+        return totalConflicts() == 0;
     }
 
-    private void initRandom() {
-        for (int row = 0; row < size; row++) {
-            positions[row] = rand.nextInt(size);
+    public void initRandom() {
+        for (int i = 0; i < size; i++) {
+            positions[i] = rand.nextInt(size);
         }
     }
 
-    private int totalConflicts() {
+    public int totalConflicts() {
         int conflicts = 0;
         for (int i = 0; i < size; i++) {
             for (int j = i + 1; j < size; j++) {
-                if (positions[i] == positions[j] ||
-                        Math.abs(positions[i] - positions[j]) == Math.abs(i - j)) {
+                if (positions[i] == positions[j] || Math.abs(positions[i] - positions[j]) == Math.abs(i - j)) {
                     conflicts++;
                 }
             }
@@ -101,11 +138,11 @@ public class Hill_Climbing {
         return conflicts;
     }
 
-    private void printBoard() {
-        System.out.println("Board:");
+    private static void printBoard(int[] pos) {
+        int size = pos.length;
         for (int row = 0; row < size; row++) {
             for (int col = 0; col < size; col++) {
-                System.out.print(positions[row] == col ? "Q " : ". ");
+                System.out.print(pos[row] == col ? "Q " : ". ");
             }
             System.out.println();
         }
