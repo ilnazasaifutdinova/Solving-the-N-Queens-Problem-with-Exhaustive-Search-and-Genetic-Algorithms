@@ -1,4 +1,4 @@
-# 🧩 Solving the N-Queens Problem with Exhaustive Search and Genetic Algorithms
+# 🧩 Solving the N-Queens Problem with Exhaustive Search and Genetic Algorithms (got 40/40 points)
 
 This repository presents a comparative study of four algorithms used to solve the **N-Queens problem**:
 
